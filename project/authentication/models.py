@@ -28,6 +28,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_staff = models.BooleanField(default=False)
     otp_secret = models.CharField(max_length=16, blank=True)
     last_otp = models.CharField(max_length=6, blank=True, null=True)
+    hotp_secret = models.CharField(max_length=16, blank=True, null=True)
+    hotp_counter = models.IntegerField(default=0)
     is_verified = models.BooleanField(default=False)
 
     USERNAME_FIELD = 'username'

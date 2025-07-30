@@ -12,12 +12,18 @@ class RegisterView(generics.CreateAPIView):
     renderer_classes = (UserRenderer,)
     def perform_create(self, serializer):
         user = serializer.save()
-        user.otp_secret = pyotp.random_base32()
+        # user.otp_secret = pyotp.random_base32()
+        user.hotp_secret = pyotp.random_base32()
+        user.hotp_counter = 0
         user.is_verified = False
         user.save()
-        totp = pyotp.TOTP(user.otp_secret, interval=300)
-        otp = totp.now()
+        # totp = pyotp.TOTP(user.otp_secret, interval=300)
+        hotp = pyotp.HOTP(user.hotp_secret)
+        otp = hotp.at(user.hotp_counter)
+        # otp = totp.now()
         Util.send_sms({"phone": user.phone, "otp": otp})
+        user.hotp_counter += 1
+        user.save()
         return Response({'detail': 'OTP sent to phone'})
 
 class LoginView(generics.GenericAPIView):
@@ -29,9 +35,13 @@ class LoginView(generics.GenericAPIView):
             user = User.objects.get(phone=phone)
         except User.DoesNotExist:
             return Response({'error': 'User not found'}, status=404)
-        totp = pyotp.TOTP(user.otp_secret, interval=300)
-        otp = totp.now()
+        # totp = pyotp.TOTP(user.otp_secret, interval=300)
+        # otp = totp.now()
+        hotp = pyotp.HOTP(user.hotp_secret)
+        otp = hotp.at(user.hotp_counter)
         Util.send_sms({"phone": user.phone, "otp": otp})
+        user.hotp_counter += 1
+        user.save()
         return Response({'detail': 'OTP sent to phone'})
 
 class OTPVerifyView(generics.GenericAPIView):
@@ -47,8 +57,10 @@ class OTPVerifyView(generics.GenericAPIView):
         # if not user.otp_secret:
         #     return Response({'error': 'Registration incomplete'}, status=400)
 
-        totp = pyotp.TOTP(user.otp_secret, interval=300)
-        if totp.verify(otp):
+        # totp = pyotp.TOTP(user.otp_secret, interval=300)
+        hotp = pyotp.HOTP(user.hotp_secret)
+        valid = hotp.verify(otp, user.hotp_counter - 1)
+        if valid:
             user.is_verified = True
             user.save()
             refresh = RefreshToken.for_user(user)

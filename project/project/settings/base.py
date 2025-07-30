@@ -17,6 +17,9 @@ INSTALLED_APPS = [
     'authentication',
     'rest_framework_simplejwt',
     'pyotp',
+    # 'django-otp',
+    # 'django_otp.plugins.otp_totp',
+
 ]
 
 SWAGGER_SETTINGS = {
